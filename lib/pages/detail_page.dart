@@ -145,21 +145,30 @@ class DetailPage extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: AspectRatio(
         aspectRatio: 16 / 9,
-        // 这里使用 Image.network 加载图片，类比 <img>
-        child: Image.network(
-          item.imageUrl,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              color: Color(item.colorValue).withOpacity(0.2),
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          },
-          errorBuilder: (context, url, error) => Container(
-            color: Colors.grey[200],
-            child: const Icon(Icons.error_outline, size: 48),
-          ),
+        child: Hero(
+          tag: 'video-${item.id}',
+          child: item.imageUrl.startsWith('http') 
+            ? Image.network(
+                item.imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: Color(item.colorValue).withOpacity(0.2),
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
+                errorBuilder: (context, url, error) => Container(
+                  color: Color(item.colorValue).withOpacity(0.3),
+                  child: const Center(
+                    child: Icon(Icons.broken_image_rounded, color: Colors.white, size: 48),
+                  ),
+                ),
+              )
+            : Image.asset(
+                item.imageUrl,
+                fit: BoxFit.cover,
+              ),
         ),
       ),
     );
@@ -261,16 +270,29 @@ class DetailPage extends StatelessWidget {
 
   // 正文的复用组件
   Widget _buildDescription() {
-    return Text(
-      '这是个视频详情预览页面。每一个细节都展示了 Flutter UI 组件化的魅力。\n\n'
-      '你可以点击顶部的播放按钮（模拟）或下方的作者头像。这里我们运用了现代化的 UI 准则：'
-      '毛玻璃、弥散阴影、留白艺术与平滑渐变，这些都能在这个 Flutter 页面中用几行代码简单搭建出来。',
-      style: TextStyle(
-        fontSize: 16,
-        height: 1.8,
-        letterSpacing: 0.3,
-        color: Colors.grey[800],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Color(item.colorValue).withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Color(item.colorValue).withOpacity(0.2)),
+          ),
+          child: Text(
+            '“${item.quote}”',
+            style: TextStyle(
+              fontSize: 18,
+              height: 1.8,
+              letterSpacing: 0.5,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

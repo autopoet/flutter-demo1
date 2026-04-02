@@ -19,7 +19,8 @@ class VideoItem {
   final double height;
   final String title;
   final String author;
-  final String imageUrl; // 真实的网络图片 URL
+  final String imageUrl;
+  final String quote; // 新增：金句/台词
   final int likeCount;
   final int colorValue;
 
@@ -29,6 +30,7 @@ class VideoItem {
     required this.title,
     required this.author,
     required this.imageUrl,
+    required this.quote,
     required this.likeCount,
     required this.colorValue,
   });
@@ -37,13 +39,13 @@ class VideoItem {
   factory VideoItem.fromJson(Map<String, dynamic> json) {
     return VideoItem(
       id: json['id'] as int,
-      // 使用随机高度生成，因为 Placeholder 不提供高度信息
-      height: 180.0 + (json['id'] % 10) * 15,
+      height: json['height'] as double,
       title: json['title'] as String,
-      author: '创作者 @user_${json['id']}',
-      imageUrl: json['url'] as String, // 指向真实图片
-      likeCount: (json['id'] * 123) % 10000,
-      colorValue: (json['id'] * 0xFFFFFF).toInt() | 0xFF000000, // 随机色
+      author: json['author'] as String,
+      imageUrl: json['imageUrl'] as String,
+      quote: json['quote'] as String,
+      likeCount: json['likeCount'] as int,
+      colorValue: json['colorValue'] as int,
     );
   }
 }
