@@ -151,11 +151,14 @@ class _FeedPageState extends State<FeedPage> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Colors.pinkAccent, Colors.deepPurpleAccent]),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [BoxShadow(color: Colors.pinkAccent.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                    gradient: const LinearGradient(
+                      colors: [Colors.pinkAccent, Colors.deepPurpleAccent],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                  child: const Icon(Icons.tv_rounded, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
                 const Text(
@@ -212,13 +215,13 @@ class _FeedPageState extends State<FeedPage> {
               onPressed: () => setState(() {
                 _videoFuture = fetchVideos();
               }),
-              icon: const Icon(Icons.refresh_rounded, color: Colors.black87, size: 22),
+              icon: const Icon(Icons.cached_rounded, color: Colors.black54, size: 22),
             ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: IconButton(
                 onPressed: () {},
-                icon: const Icon(Icons.account_circle_outlined, color: Colors.black87, size: 24),
+                icon: const Icon(Icons.person_outline_rounded, color: Colors.black54, size: 24),
               ),
             ),
           ],
