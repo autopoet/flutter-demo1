@@ -21,6 +21,7 @@ class VideoItem {
   final String author;
   final String imageUrl;
   final String quote; // 新增：金句/台词
+  final String? videoUrl; // 新增：如果是视频，提供视频地址
   final int likeCount;
   final int colorValue;
 
@@ -31,6 +32,7 @@ class VideoItem {
     required this.author,
     required this.imageUrl,
     required this.quote,
+    this.videoUrl, // 可选
     required this.likeCount,
     required this.colorValue,
   });
@@ -44,6 +46,7 @@ class VideoItem {
       author: json['author'] as String,
       imageUrl: json['imageUrl'] as String,
       quote: json['quote'] as String,
+      videoUrl: json['videoUrl'] as String?,
       likeCount: json['likeCount'] as int,
       colorValue: json['colorValue'] as int,
     );

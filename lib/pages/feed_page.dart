@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -96,11 +97,26 @@ class _FeedPageState extends State<FeedPage> {
       "进击的社畜", "银魂永不完结", "夏目之友", "木叶村编外人员", "全职猎人停刊日"
     ];
 
+    // 满足一半一半的比例：20个本地番剧名场面，其中10个为Live动态视频（绝无重复，10个完全独立的高清短视频动画）
+    final List<String?> videoPool = [
+      'assets/videos/anime0.mp4', null,
+      'assets/videos/anime1.mp4', null,
+      'assets/videos/anime2.mp4', null,
+      'assets/videos/anime3.mp4', null,
+      'assets/videos/anime4.mp4', null,
+      'assets/videos/anime5.mp4', null,
+      'assets/videos/anime6.mp4', null,
+      'assets/videos/anime7.mp4', null,
+      'assets/videos/anime8.mp4', null,
+      'assets/videos/anime9.mp4', null,
+    ];
+
     List<VideoItem> fetched = [];
     
-    // 生成大概 20 张卡片，确保每一张都是唯一的，没有任何重复
+    // 生成正好 20 张卡片，绝无重复项！
     for (int i = 0; i < localAnimeAssets.length; i++) {
         final anime = localAnimeAssets[i];
+        final videoUrl = i < videoPool.length ? videoPool[i] : null;
         
         fetched.add(VideoItem(
         id: i,
@@ -109,6 +125,7 @@ class _FeedPageState extends State<FeedPage> {
         title: anime['title']!,
         author: nicknames[i % nicknames.length],
         imageUrl: anime['url']!,
+        videoUrl: videoUrl, // 挂载视频地址
         quote: quotes[i % quotes.length],
         likeCount: (i * 123 + 555) % 3000,
         colorValue: Colors.primaries[i % Colors.primaries.length].value,
@@ -120,86 +137,185 @@ class _FeedPageState extends State<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          '发现动态',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: false,
-        elevation: 0,
-        backgroundColor: Colors.white.withOpacity(0.65),
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => setState(() {
-              _videoFuture = fetchVideos();
-            }),
-            icon: const Icon(Icons.refresh_rounded, color: Colors.black87),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.search_rounded, color: Colors.black87),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: AppBar(
+            title: Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Colors.pinkAccent, Colors.deepPurpleAccent]),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [BoxShadow(color: Colors.pinkAccent.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  '发现动态',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                    letterSpacing: -0.5,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: FutureBuilder<List<VideoItem>>(
-            future: _videoFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildShimmerGrid();
-              } else if (snapshot.hasError) {
-                return Center(child: Text('出错了: ${snapshot.error}'));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('暂无数据'));
-              }
-
-              final items = snapshot.data!;
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  int crossAxisCount = 2;
-                  if (constraints.maxWidth > 700) crossAxisCount = 3;
-                  if (constraints.maxWidth > 1000) crossAxisCount = 4;
-
-                  return ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                    child: MasonryGridView.count(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        return VideoCard(item: items[index]);
-                      },
-                    ),
-                  );
-                },
-              );
-            },
+        centerTitle: false,
+        elevation: 0,
+          backgroundColor: Colors.white.withOpacity(0.85),
+          surfaceTintColor: Colors.transparent,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(color: Colors.transparent),
+            ),
           ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(40),
+            child: Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: const TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                indicatorColor: Colors.pinkAccent,
+                indicatorWeight: 3,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelColor: Colors.pinkAccent,
+                unselectedLabelColor: Colors.black54,
+                labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
+                dividerColor: Colors.transparent,
+                tabs: [
+                  Tab(text: '推荐'),
+                  Tab(text: '追番'),
+                  Tab(text: '直播'),
+                  Tab(text: '专区'),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            const PremiumSearchBar(),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () => setState(() {
+                _videoFuture = fetchVideos();
+              }),
+              icon: const Icon(Icons.refresh_rounded, color: Colors.black87, size: 22),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.account_circle_outlined, color: Colors.black87, size: 24),
+              ),
+            ),
+          ],
         ),
       ),
+      body: TabBarView(
+        children: [
+          // 第一屏：推荐（包含 Banner + 瀑布流）
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: FutureBuilder<List<VideoItem>>(
+                future: _videoFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _buildShimmerGrid();
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('出错了: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('暂无数据'));
+                  }
+
+                  final items = snapshot.data!;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      int crossAxisCount = 2;
+                      if (constraints.maxWidth > 700) crossAxisCount = 3;
+                      if (constraints.maxWidth > 1000) crossAxisCount = 4;
+
+                      return CustomScrollView(
+                        slivers: [
+                          // 顶部大屏 Banner 轮播 (Hero)
+                          SliverToBoxAdapter(
+                            child: Container(
+                              height: constraints.maxWidth > 700 ? 300 : 200,
+                              margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.asset('assets/images/banner.jpg', fit: BoxFit.cover),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                          colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                                        ),
+                                      ),
+                                    ),
+                                    const Positioned(
+                                      bottom: 20,
+                                      left: 24,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('年度力荐', style: TextStyle(color: Colors.pinkAccent, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 2)),
+                                          SizedBox(height: 4),
+                                          Text('全球动漫新番预告', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24)),
+                                          Text('实时更新 • 感受跨越次元的视听盛宴', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          // 瀑布流内容区
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            sliver: SliverMasonryGrid.count(
+                              crossAxisCount: crossAxisCount,
+                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 16,
+                              childCount: items.length,
+                              itemBuilder: (context, index) {
+                                return VideoCard(item: items[index]);
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+          // 其他 Mock 屏
+          const Center(child: Text('【追番】内容尚未实装', style: TextStyle(fontSize: 18, color: Colors.black54))),
+          const Center(child: Text('【直播】内容尚未实装', style: TextStyle(fontSize: 18, color: Colors.black54))),
+          const Center(child: Text('【专区】内容尚未实装', style: TextStyle(fontSize: 18, color: Colors.black54))),
+        ],
+      ),
+    ),
     );
   }
 
@@ -227,24 +343,57 @@ class _FeedPageState extends State<FeedPage> {
   }
 }
 
-class VideoCard extends StatelessWidget {
+class VideoCard extends StatefulWidget {
   final VideoItem item;
   const VideoCard({super.key, required this.item});
 
   @override
+  State<VideoCard> createState() => _VideoCardState();
+}
+
+class _VideoCardState extends State<VideoCard> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.item.videoUrl != null) {
+      // 彻底解决跨域问题：直接加载本地高清视频资源
+      _controller = VideoPlayerController.asset(widget.item.videoUrl!)
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {
+              _isInitialized = true;
+            });
+            _controller?.setLooping(true);
+            _controller?.setVolume(0); // 默认静音预览，提升体验
+            _controller?.play();
+          }
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent, // 提供 Material 组件上下文，防止有些点击波纹或主题元素找不到而爆红
+      color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push('/detail/${item.id}', extra: item),
+        onTap: () => context.push('/detail/${widget.item.id}', extra: widget.item),
         borderRadius: BorderRadius.circular(24),
         child: Container(
-          height: item.height,
+          height: widget.item.height,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Color(item.colorValue).withOpacity(0.15),
+                color: Color(widget.item.colorValue).withOpacity(0.15),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
@@ -254,36 +403,30 @@ class VideoCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             child: Stack(
               children: [
-                // 第一层：背景图片。去掉 Positioned.fill，让它作为主撑开 Stack 的组件。
-                item.imageUrl.startsWith('http')
-                    ? Image.network(
-                        item.imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity, // 强制填满宽度
-                        height: item.height,    // 显式高度保证卡片比例
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: item.height,
-                            color: Color(item.colorValue).withOpacity(0.1),
-                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                          );
-                        },
-                        errorBuilder: (context, url, error) => Container(
-                          height: item.height,
-                          color: Color(item.colorValue).withOpacity(0.2),
-                          child: const Center(
-                            child: Icon(Icons.broken_image_rounded, color: Colors.white38, size: 40),
+                // 背景层与视频层：采用逻辑切换
+                Positioned.fill(
+                  child: _isInitialized && _controller != null
+                      ? FittedBox(
+                          fit: BoxFit.cover,
+                          clipBehavior: Clip.hardEdge,
+                          child: SizedBox(
+                            width: _controller!.value.size.width,
+                            height: _controller!.value.size.height,
+                            child: VideoPlayer(_controller!),
                           ),
-                        ),
-                      )
-                    : Image.asset(
-                        item.imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: item.height,
-                      ),
-                // 第二层：强化深色渐变蒙层。从透明到更深的黑色。
+                        )
+                      : widget.item.imageUrl.startsWith('http')
+                          ? Image.network(
+                              widget.item.imageUrl,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.asset(
+                              widget.item.imageUrl,
+                              fit: BoxFit.cover,
+                            ),
+                ),
+
+                // 第三层：更细腻的渐变蒙层，强化高级感
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
@@ -291,17 +434,18 @@ class VideoCard extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.0), // 顶部浅透明
-                          Colors.black.withOpacity(0.4), // 中间平滑过度
-                          Colors.black.withOpacity(0.85), // 底部极深，保护文本
+                          Colors.black.withOpacity(0.0),
+                          Colors.black.withOpacity(0.1),
+                          Colors.black.withOpacity(0.6),
+                          Colors.black.withOpacity(0.9),
                         ],
-                        stops: const [0.3, 0.5, 0.7, 1.0],
+                        stops: const [0.4, 0.6, 0.85, 1.0],
                       ),
                     ),
                   ),
                 ),
-                // 第三层：底部排版矩阵
+                
+                // 第四层：信息排版与毛玻璃标签
                 Positioned(
                   left: 16,
                   right: 16,
@@ -310,23 +454,41 @@ class VideoCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (widget.item.videoUrl != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.5),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.play_circle_fill, size: 12, color: Colors.white),
+                                  SizedBox(width: 4),
+                                  Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       Text(
-                        item.quote,
+                        widget.item.quote,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Roboto',
                           fontSize: 14,
-                          height: 1.4,
-                          letterSpacing: 0.5,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black54,
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
+                          height: 1.5,
+                          color: Color(0xFFF0F0F0),
+                          shadows: [Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1))],
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -338,21 +500,14 @@ class VideoCard extends StatelessWidget {
                               children: [
                                 CircleAvatar(
                                   radius: 12,
-                                  backgroundColor: Color(item.colorValue),
+                                  backgroundColor: Color(widget.item.colorValue),
                                   child: const Icon(Icons.person, size: 14, color: Colors.white),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    item.author,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.white, // 改为纯白
-                                      fontWeight: FontWeight.w700,
-                                      shadows: [
-                                        Shadow(color: Colors.black87, blurRadius: 4),
-                                      ],
-                                    ),
+                                    widget.item.author,
+                                    style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w700),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -362,22 +517,11 @@ class VideoCard extends StatelessWidget {
                           ),
                           Consumer<LikeStore>(
                             builder: (context, store, _) {
-                              final liked = store.isLiked(item.id);
-                              return AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
-                                child: IconButton(
-                                  key: ValueKey(liked),
-                                  icon: Icon(
-                                    liked ? Icons.favorite : Icons.favorite_border,
-                                    size: 24,
-                                    color: liked ? Colors.pinkAccent : Colors.white,
-                                  ),
-                                  onPressed: () => store.toggleLike(item.id),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  splashRadius: 20,
-                                ),
+                              final liked = store.isLiked(widget.item.id);
+                              return Icon(
+                                liked ? Icons.favorite : Icons.favorite_border,
+                                size: 20,
+                                color: liked ? Colors.pinkAccent : Colors.white,
                               );
                             },
                           ),
@@ -394,3 +538,112 @@ class VideoCard extends StatelessWidget {
     );
   }
 }
+
+class PremiumSearchBar extends StatefulWidget {
+  const PremiumSearchBar({super.key});
+
+  @override
+  State<PremiumSearchBar> createState() => _PremiumSearchBarState();
+}
+
+class _PremiumSearchBarState extends State<PremiumSearchBar> {
+  bool _isHovered = false;
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isActive = _isHovered || _focusNode.hasFocus;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) {
+        if (!_focusNode.hasFocus && _controller.text.isEmpty) {
+          setState(() => _isHovered = false);
+        }
+      },
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutExpo,
+          width: isActive ? 280 : 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: isActive ? Colors.grey.withOpacity(0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: isActive ? Colors.pinkAccent.withOpacity(0.08) : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon wrapped in GestureDetector to trigger focus
+              GestureDetector(
+                onTap: () {
+                  setState(() => _isHovered = true);
+                  _focusNode.requestFocus();
+                },
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Icon(
+                      isActive ? Icons.search_rounded : Icons.search_outlined,
+                      key: ValueKey(isActive),
+                      color: isActive ? Colors.pinkAccent : Colors.black87,
+                      size: isActive ? 22 : 24,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 250),
+                  opacity: isActive ? 1.0 : 0.0,
+                  curve: Curves.easeIn,
+                  child: isActive
+                      ? TextField(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5, // 避免某些字体拥挤产生奇怪连字
+                          ),
+                          textAlignVertical: TextAlignVertical.center,
+                          decoration: const InputDecoration(
+                            hintText: '搜索 高分神作...',
+                            hintStyle: TextStyle(fontSize: 14, color: Colors.black38),
+                            border: InputBorder.none,
+                            isCollapsed: true, // 极其重要：防止内部 padding 产生奇怪的溢出字母或黑块
+                          ),
+                          onTapOutside: (_) {
+                            _focusNode.unfocus();
+                            if (_controller.text.isEmpty) {
+                              setState(() => _isHovered = false);
+                            }
+                          },
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

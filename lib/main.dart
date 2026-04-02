@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'models/video_item.dart';
 import 'pages/feed_page.dart';
 import 'pages/detail_page.dart';
+import 'pages/main_layout.dart';
 import 'stores/like_store.dart';
 
 // ─────────────────────────────────────────────
@@ -20,23 +21,24 @@ import 'stores/like_store.dart';
 final GoRouter _router = GoRouter(
   initialLocation: '/',
   routes: [
-    // 主路由：瀑布流首页
-    // Vue: { path: '/', component: FeedPage }
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const FeedPage(),
+    ShellRoute(
+      builder: (context, state, child) {
+        // 全局套用 响应式骨架 (NavigationRail / BottomNavigationBar)
+        return MainLayout(child: child);
+      },
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const FeedPage(),
+        ),
+      ],
     ),
-
-    // 详情页路由，带动态参数 :id
-    // Vue: { path: '/detail/:id', component: DetailPage }
-    //      在 Vue 中用 useRoute().params.id 获取参数
-    //      在 Flutter 中用 state.pathParameters['id'] 获取
+    
+    // 详情页跳出 ShellRoute（像 B站/YouTube 一样，播放页是沉浸式的新窗口或全屏覆盖）
     GoRoute(
       path: '/detail/:id',
       builder: (context, state) {
-        // 从路由参数里解析 id
         final id = int.parse(state.pathParameters['id']!);
-        // 通过 extra 传递完整的数据对象（类比 vue-router 的 state）
         final item = state.extra as VideoItem;
         return DetailPage(id: id, item: item);
       },
@@ -71,6 +73,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorSchemeSeed: const Color(0xFFE91E63),
+          fontFamily: 'PingFang SC, Microsoft YaHei, Roboto, sans-serif', // 彻底修复 CanvasKit 中文乱码/方块/奇怪字母
           appBarTheme: const AppBarTheme(
             centerTitle: true,
             elevation: 0,

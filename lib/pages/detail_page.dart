@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:video_player/video_player.dart';
 import '../models/video_item.dart';
 import '../stores/like_store.dart';
 
-class DetailPage extends StatelessWidget {
+class DetailPage extends StatefulWidget {
   final int id;
   final VideoItem item;
 
@@ -13,6 +14,37 @@ class DetailPage extends StatelessWidget {
     required this.id,
     required this.item,
   });
+
+  @override
+  State<DetailPage> createState() => _DetailPageState();
+}
+
+class _DetailPageState extends State<DetailPage> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.item.videoUrl != null) {
+      _controller = VideoPlayerController.asset(widget.item.videoUrl!)
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {
+              _isInitialized = true;
+            });
+            _controller?.play();
+            _controller?.setLooping(true);
+          }
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,50 +79,40 @@ class DetailPage extends StatelessWidget {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // ─────────────────────────────────────────────
-          // 【对比：响应式布局】
-          //
-          // Vue: 用 CSS Media Queries (如 @media (min-width: 800px)) 
-          //      或者 Tailwind 的 md:flex 等原子类来控制。
-          // 
-          // Flutter: 用 LayoutBuilder。它在运行时给你当前组件可以占用的宽度和高度，
-          //          你可以用 if/else 返回完全不同的 Widget 结构。
-          //          比如这里：当宽度 > 800 认为是电脑端，使用左右排列（Row）；
-          //          否则认为是手机端，使用上下排列（Column）。
-          // ─────────────────────────────────────────────
-          final isDesktop = constraints.maxWidth > 800;
-
+          final isDesktop = constraints.maxWidth > 900;
           if (isDesktop) {
-            // PC / Web 端样式：左右分栏结构
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
+                constraints: const BoxConstraints(maxWidth: 1400),
                 child: Padding(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 左侧：大型视频封面区
+                      // 左侧主视频和信息 (70% width)
                       Expanded(
-                        flex: 6,
-                        child: _buildCover(context),
-                      ),
-                      const SizedBox(width: 48),
-                      // 右侧：信息与交互区
-                      Expanded(
-                        flex: 4,
+                        flex: 7,
                         child: SingleChildScrollView(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildHeader(context),
-                              const SizedBox(height: 32),
-                              _buildAuthorInfo(context),
-                              const Divider(height: 64, thickness: 1, color: Colors.black12),
-                              _buildDescription(),
+                              _buildVideoPlayer(context, isDesktop: true),
+                              const SizedBox(height: 20),
+                              _buildVideoTitle(context),
+                              const SizedBox(height: 12),
+                              _buildAuthorAndActionsRow(context),
+                              const SizedBox(height: 20),
+                              _buildDescriptionBox(),
+                              const SizedBox(height: 40),
                             ],
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 32),
+                      // 右侧推荐列表 (30% width)
+                      Expanded(
+                        flex: 3,
+                        child: _buildRelatedVideos(),
                       ),
                     ],
                   ),
@@ -99,28 +121,30 @@ class DetailPage extends StatelessWidget {
             );
           }
 
-          // 移动端/竖屏样式：居中 + 上下结构
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+          // 移动端布局
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildVideoPlayer(context, isDesktop: false),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildCover(context),
-                      const SizedBox(height: 32),
-                      _buildHeader(context),
-                      const SizedBox(height: 24),
-                      _buildAuthorInfo(context),
-                      const Divider(height: 48, thickness: 1, color: Colors.black12),
-                      _buildDescription(),
-                      const SizedBox(height: 40),
+                      _buildVideoTitle(context),
+                      const SizedBox(height: 12),
+                      _buildAuthorAndActionsRow(context, isMobile: true),
+                      const SizedBox(height: 16),
+                      _buildDescriptionBox(),
+                      const Divider(height: 40),
+                      const Text('接下来播放', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      _buildRelatedVideos(),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -128,171 +152,221 @@ class DetailPage extends StatelessWidget {
     );
   }
 
-  // 封面的复用组件
-  Widget _buildCover(BuildContext context) {
+  Widget _buildVideoPlayer(BuildContext context, {required bool isDesktop}) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        color: Colors.black,
+        borderRadius: isDesktop ? BorderRadius.circular(16) : BorderRadius.zero,
+        boxShadow: isDesktop ? [
           BoxShadow(
-            color: Color(item.colorValue).withOpacity(0.3),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
-            spreadRadius: 2,
           ),
-        ],
+        ] : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: Hero(
-          tag: 'video-${item.id}',
-          child: item.imageUrl.startsWith('http') 
-            ? Image.network(
-                item.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Color(item.colorValue).withOpacity(0.2),
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, url, error) => Container(
-                  color: Color(item.colorValue).withOpacity(0.3),
-                  child: const Center(
-                    child: Icon(Icons.broken_image_rounded, color: Colors.white, size: 48),
+          tag: 'video-${widget.item.id}',
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!_isInitialized)
+                widget.item.imageUrl.startsWith('http')
+                    ? Image.network(widget.item.imageUrl, fit: BoxFit.cover)
+                    : Image.asset(widget.item.imageUrl, fit: BoxFit.cover),
+              
+              if (_isInitialized && _controller != null)
+                Positioned.fill(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: _controller!.value.size.width,
+                      height: _controller!.value.size.height,
+                      child: VideoPlayer(_controller!),
+                    ),
                   ),
                 ),
-              )
-            : Image.asset(
-                item.imageUrl,
-                fit: BoxFit.cover,
-              ),
+              
+              if (!_isInitialized && widget.item.videoUrl != null)
+                const Center(child: CircularProgressIndicator(color: Colors.pinkAccent)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // 标题和点赞的复用组件
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            item.title,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                ),
+  Widget _buildVideoTitle(BuildContext context) {
+    return Text(
+      widget.item.title,
+      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            fontSize: 24,
+            height: 1.3,
+            color: Colors.black87,
           ),
+    );
+  }
+
+  Widget _buildAuthorAndActionsRow(BuildContext context, {bool isMobile = false}) {
+    final authorSection = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: Color(widget.item.colorValue),
+          child: const Icon(Icons.person, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.item.author, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text('${widget.item.likeCount} 粉丝', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          ],
         ),
         const SizedBox(width: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
-            shape: BoxShape.circle,
+        ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            minimumSize: const Size(60, 36),
           ),
+          child: const Text('关注', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ),
+      ],
+    );
+
+    final actionSection = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 36,
+          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(18)),
           child: Consumer<LikeStore>(
             builder: (context, store, _) {
-              final liked = store.isLiked(item.id);
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
-                child: IconButton(
-                  key: ValueKey(liked),
-                  icon: Icon(
-                    liked ? Icons.favorite : Icons.favorite_border,
-                    color: liked ? Colors.pinkAccent : Colors.black54,
+              final liked = store.isLiked(widget.item.id);
+              return Row(
+                children: [
+                  IconButton(
+                    icon: Icon(liked ? Icons.thumb_up : Icons.thumb_up_outlined, size: 18, color: liked ? Colors.black87 : Colors.black54),
+                    onPressed: () => store.toggleLike(widget.item.id),
                   ),
-                  iconSize: 28,
-                  onPressed: () {
-                    store.toggleLike(item.id);
-                  },
-                ),
+                  Container(width: 1, height: 20, color: Colors.black12),
+                  IconButton(
+                    icon: const Icon(Icons.thumb_down_outlined, size: 18, color: Colors.black54),
+                    onPressed: () {},
+                  ),
+                ],
               );
             },
           ),
         ),
+        const SizedBox(width: 8),
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(18)),
+          child: const Row(children: [Icon(Icons.share_outlined, size: 18), SizedBox(width: 6), Text('分享', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))]),
+        ),
+      ],
+    );
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          authorSection,
+          const SizedBox(height: 12),
+          actionSection,
+        ],
+      );
+    }
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        authorSection,
+        actionSection,
       ],
     );
   }
 
-  // 作者信息的复用组件
-  Widget _buildAuthorInfo(BuildContext context) {
+  Widget _buildDescriptionBox() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.grey.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: Color(item.colorValue),
-            child: const Icon(Icons.person, color: Colors.white),
+          Text(
+            '${widget.item.likeCount * 8} 次观看  •  2026年4月',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.author,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${item.likeCount} 粉丝',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            '这里是名台词鉴赏：“${widget.item.quote}”\n在这个史诗级的重构版本中，我们模拟了如同顶端流媒体般的内容简介排版。',
+            style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87),
           ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-            ),
-            child: const Text('关注', style: TextStyle(fontWeight: FontWeight.bold)),
-          )
         ],
       ),
     );
   }
 
-  // 正文的复用组件
-  Widget _buildDescription() {
+  Widget _buildRelatedVideos() {
+    // 渲染一串模拟的“接下来播放”列表
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Color(item.colorValue).withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Color(item.colorValue).withOpacity(0.2)),
+      children: List.generate(8, (index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/anime${index + 2}.jpg',
+                  width: 160,
+                  height: 90,
+                  fit: BoxFit.cover,
+                  errorBuilder: (c,e,s) => Container(width:160, height:90, color: Colors.grey[300]),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '推荐动漫短片/高燃剪辑 AMV - 第 ${index + 1} 期',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, height: 1.3),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text('知名UP主_${index}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    Text('${(index+1)*3}万次观看', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: Text(
-            '“${item.quote}”',
-            style: TextStyle(
-              fontSize: 18,
-              height: 1.8,
-              letterSpacing: 0.5,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-        ),
-      ],
+        );
+      }),
     );
   }
 }
