@@ -37,55 +37,57 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   // 从真实二次元源（Jikan MAL API）获取【日本热门番】数据！
-  // 使用硬编码的高清 TMDB CDN 资源（完美支持 CORS 与 Flutter Web CanvasKit）
+  // 使用硬编码的高清本地资源（20张不重复），完美支持 CORS 与 Flutter Web CanvasKit
   Future<List<VideoItem>> fetchVideos() async {
     // 模拟一下网络响应延迟
     await Future.delayed(const Duration(milliseconds: 600));
 
     // 零网裂图的终极杀招：我们直接使用了已经下载在本地的高清动漫资源资产
-    // 这些是从 Bilibili/TMDB 上精选的热门番剧原画背景图，由于是本地 Asset，不受任何 CORS 或网络影响，秒开100%成功！
+    // 这里扩展到 20 张不重复的高清大图，每一张都是精选热门番剧。
     final List<Map<String, String>> localAnimeAssets = [
-      {
-        'title': '未闻花名',
-        'url': 'assets/images/anime0.jpg'
-      },
-      {
-        'title': '某科学的超电磁炮',
-        'url': 'assets/images/anime1.jpg'
-      },
-      {
-        'title': '进击的巨人',
-        'url': 'assets/images/anime2.jpg'
-      },
-      {
-        'title': '笨蛋、测验、召唤兽',
-        'url': 'assets/images/anime3.jpg'
-      },
-      {
-        'title': '崖上的波妞',
-        'url': 'assets/images/anime4.jpg'
-      },
-      {
-        'title': '鬼灯的冷彻',
-        'url': 'assets/images/anime5.jpg'
-      }
+      {'title': '我们仍未知道那天所看见的花的名字', 'url': 'assets/images/anime0.jpg'},
+      {'title': '某科学的超电磁炮', 'url': 'assets/images/anime1.jpg'},
+      {'title': '加速世界', 'url': 'assets/images/anime2.jpg'},
+      {'title': '笨蛋、测验、召唤兽', 'url': 'assets/images/anime3.jpg'},
+      {'title': '问题儿童都来自异世界？', 'url': 'assets/images/anime4.jpg'},
+      {'title': '鬼灯的冷彻', 'url': 'assets/images/anime5.jpg'},
+      {'title': '刀剑神域', 'url': 'assets/images/anime6.jpg'},
+      {'title': '约会大作战', 'url': 'assets/images/anime7.jpg'},
+      {'title': '神的记事本', 'url': 'assets/images/anime8.jpg'},
+      {'title': '影之诗', 'url': 'assets/images/anime9.jpg'},
+      {'title': '笨蛋、测验、召唤兽 第二季', 'url': 'assets/images/anime10.jpg'},
+      {'title': '物语系列', 'url': 'assets/images/anime11.jpg'},
+      {'title': '干物妹！小埋', 'url': 'assets/images/anime12.jpg'},
+      {'title': '攻壳机动队', 'url': 'assets/images/anime13.jpg'},
+      {'title': '传说中勇者的传说', 'url': 'assets/images/anime14.jpg'},
+      {'title': '纯白交响曲', 'url': 'assets/images/anime15.jpg'},
+      {'title': '夏洛特 SP', 'url': 'assets/images/anime16.jpg'},
+      {'title': '某科学的一方通行', 'url': 'assets/images/anime17.jpg'},
+      {'title': '全职高手', 'url': 'assets/images/anime18.jpg'},
+      {'title': '斗罗大陆', 'url': 'assets/images/anime19.jpg'},
     ];
 
     final List<String> quotes = [
       "只要不失去你的崇高，整个世界都会向你敞开。",
       "错的不是我，是这个世界。",
-      "世界上只有一种真正的英雄主义，那就是认清生活的真相后依然热爱它。",
+      "无论在哪里遇到你，我都会喜欢上你。",
       "如果奇迹有颜色，那一定是橙色的！",
       "即使是在这虚伪的世界当中，也总有一些真实的东西。",
       "我命由我不由天！",
-      "无论在哪里遇到你，我都会喜欢上你。",
+      "隐藏着黑暗力量的钥匙啊，在我面前显示你真正的力量！",
       "不要悲伤，不要心急！忧郁的日子里须要镇静。",
       "你的名字，是我听过最短的情诗。",
       "愿你有一天，能和你最重要的人相逢。",
       "你指尖跃动的电光，是我此生不灭的信仰！",
-      "既然选择了远方，便只顾风雨兼程。",
-      "我们一路奋战，不是为了改变世界，而是为了不让世界改变我们。",
-      "背山倒海，剑指苍穹！"
+      "已经没什么好害怕的了，因为我不再是孤单一人了。",
+      "如果不战斗，就无法赢！",
+      "所谓觉悟，就是在漆黑的荒野中开辟出一条理应前行的道路。",
+      "在这个世界上，弱者只有被支配的份。",
+      "即便只有百分之一的希望，也要付出百分之百的努力。",
+      "真正重要的东西，总是没有办法一眼看穿的。",
+      "人如果不牺牲些什么的话，就什么也得不到。",
+      "不管前方的路有多苦，只要走的方向正确，不管多么崎岖不平，都比站在原地更接近幸福。",
+      "立于浮华之世，奏响天籁之音。"
     ];
 
     final List<String> nicknames = [
@@ -96,19 +98,19 @@ class _FeedPageState extends State<FeedPage> {
 
     List<VideoItem> fetched = [];
     
-    // 生成大概 30 张卡片，循环使用我们的本地精品库
-    for (int i = 0; i < 30; i++) {
-        final anime = localAnimeAssets[i % localAnimeAssets.length];
+    // 生成大概 20 张卡片，确保每一张都是唯一的，没有任何重复
+    for (int i = 0; i < localAnimeAssets.length; i++) {
+        final anime = localAnimeAssets[i];
         
         fetched.add(VideoItem(
         id: i,
         // 这里精心调整了高度让它看上去像真正的瀑布流卡片
-        height: 250.0 + (i % 3) * 60,
+        height: 250.0 + (i % 4) * 50,
         title: anime['title']!,
         author: nicknames[i % nicknames.length],
         imageUrl: anime['url']!,
         quote: quotes[i % quotes.length],
-        likeCount: (i * 99 + 888) % 3000,
+        likeCount: (i * 123 + 555) % 3000,
         colorValue: Colors.primaries[i % Colors.primaries.length].value,
       ));
     }
