@@ -1,8 +1,10 @@
-import 'dart:math';
+import 'dart:convert'; // 用于 jsonDecode
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http; // dio 同等作用，类比 axios
+import 'package:shimmer/shimmer.dart'; // 骨架屏
 import '../models/video_item.dart';
 import '../stores/like_store.dart';
 
@@ -14,19 +16,43 @@ class FeedPage extends StatefulWidget {
 }
 
 class _FeedPageState extends State<FeedPage> {
-  // 生成模拟数据
-  // Vue: data() { return { items: [] } }
-  // Flutter: 在 State 类中定义变量，类比 Vue 的响应式数据（但不是自动代理的）
-  final List<VideoItem> items = List.generate(50, (index) {
-    return VideoItem(
-      id: index,
-      height: 150.0 + Random().nextInt(150),
-      title: '瀑布流内容 $index',
-      author: '创作者 @user_$index',
-      likeCount: Random().nextInt(10000),
-      colorValue: Colors.primaries[index % Colors.primaries.length].value,
-    );
-  });
+  // ─────────────────────────────────────────────
+  // 【对比：异步请求机制】
+  //
+  // Vue: 通常在 onMounted 中调用 axios.get()，
+  //      然后把数据保存到 list.value 里通过 v-for 渲染。
+  // 
+  // Flutter: 有两种常见方式：
+  //    1. 类似 Vue：在 initState 中请求，setState(list = data)，
+  //    2. 推荐方案：使用 [FutureBuilder]。它是 Flutter 内置的一个神奇组件，
+  //       可以直接监听一个异步方法的状态（进行中、成功、失败）。
+  //       这就像 Vue3 的 [Suspense] + [async setup()]。
+  // ─────────────────────────────────────────────
+
+  late Future<List<VideoItem>> _videoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoFuture = fetchVideos();
+  }
+
+  // 模拟 API 请求函数
+  // 类比: const fetchVideos = async () => { ... }
+  Future<List<VideoItem>> fetchVideos() async {
+    try {
+      final response = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/photos?_limit=30'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        // 类比: return data.map(item => new VideoItem(item))
+        return data.map((json) => VideoItem.fromJson(json)).toList();
+      } else {
+        throw Exception('加载失败');
+      }
+    } catch (e) {
+      throw Exception('网络错误');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,57 +66,93 @@ class _FeedPageState extends State<FeedPage> {
             letterSpacing: -0.5,
           ),
         ),
-        centerTitle: false, // 现代 App 倾向于标题靠左，显得更有设计感
+        centerTitle: false,
         elevation: 0,
-        backgroundColor: Colors.white.withOpacity(0.9), // 略微透明，模拟磨砂质感
+        backgroundColor: Colors.white.withOpacity(0.9),
         surfaceTintColor: Colors.white,
         actions: [
-          // 添加搜索图标
+          IconButton(
+            onPressed: () => setState(() {
+              _videoFuture = fetchVideos(); // 手动触发刷新，类比 window.location.reload()
+            }),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.black87),
+          ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.search_rounded, color: Colors.black87),
-            tooltip: '搜索',
           ),
-          // 添加个人中心入口
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
               onPressed: () {},
               icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
-              tooltip: '个人中心',
             ),
           ),
         ],
       ),
-      // 使用 Center + ConstrainedBox 限制整页宽度，防止宽屏显示下过于凌乱
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // 重新调整列数：手机端 2 列，桌面端最多 3-4 列
-              // 对于瀑布流来说，3-4 列是人类视觉最舒适的极限，6 列确实太杂乱了
-              int crossAxisCount = 2; 
-              if (constraints.maxWidth > 700) {
-                crossAxisCount = 3; 
-              }
-              if (constraints.maxWidth > 1000) {
-                crossAxisCount = 4;
+          child: FutureBuilder<List<VideoItem>>(
+            future: _videoFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                // 加载中，显示骨架屏
+                return _buildShimmerGrid();
+              } else if (snapshot.hasError) {
+                // 错误处理
+                return Center(child: Text('出错了: ${snapshot.error}'));
+              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('暂无数据'));
               }
 
-              return MasonryGridView.count(
-                crossAxisCount: crossAxisCount,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  return VideoCard(item: items[index]);
+              // 成功渲染
+              final items = snapshot.data!;
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  int crossAxisCount = 2;
+                  if (constraints.maxWidth > 700) crossAxisCount = 3;
+                  if (constraints.maxWidth > 1000) crossAxisCount = 4;
+
+                  return MasonryGridView.count(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 20,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      return VideoCard(item: items[index]);
+                    },
+                  );
                 },
               );
             },
           ),
         ),
+      ),
+    );
+  }
+
+  // 构建骨架屏，类比 Vue 中实现的 Skeleton.vue
+  Widget _buildShimmerGrid() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: MasonryGridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        padding: const EdgeInsets.all(24),
+        itemCount: 6,
+        itemBuilder: (context, index) {
+          return Container(
+            height: index.isEven ? 200 : 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          );
+        },
       ),
     );
   }
@@ -130,24 +192,24 @@ class VideoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 封面：使用渐变蒙层增加呼吸感
-            Container(
+            // 封面：从网络加载真实图片，类比 <img> 标签的懒加载
+            Image.network(
+              item.imageUrl,
               height: item.height,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(item.colorValue).withOpacity(0.5),
-                    Color(item.colorValue).withOpacity(0.2),
-                  ],
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.play_arrow_rounded,
-                size: 40,
-                color: Color(item.colorValue).withOpacity(0.8),
+              fit: BoxFit.cover,
+              // 加载中的占位，相当于 <img> 的 placeholder
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: item.height,
+                  color: Color(item.colorValue).withOpacity(0.2),
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                );
+              },
+              errorBuilder: (context, url, error) => Container(
+                height: item.height,
+                color: Colors.grey[200],
+                child: const Icon(Icons.error_outline),
               ),
             ),
             // 底部内容

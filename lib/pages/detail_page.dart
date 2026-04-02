@@ -145,22 +145,20 @@ class DetailPage extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: AspectRatio(
         aspectRatio: 16 / 9,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(item.colorValue).withOpacity(0.7),
-                Color(item.colorValue).withOpacity(0.2),
-              ],
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.play_circle_fill,
-            size: 72,
-            color: Colors.white.withOpacity(0.9),
+        // 这里使用 Image.network 加载图片，类比 <img>
+        child: Image.network(
+          item.imageUrl,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              color: Color(item.colorValue).withOpacity(0.2),
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          },
+          errorBuilder: (context, url, error) => Container(
+            color: Colors.grey[200],
+            child: const Icon(Icons.error_outline, size: 48),
           ),
         ),
       ),
