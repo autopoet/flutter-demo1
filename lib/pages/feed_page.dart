@@ -252,10 +252,11 @@ class _FeedPageState extends State<FeedPage> {
                         slivers: [
                           // 顶部大屏 Banner 轮播 (Hero)
                           SliverToBoxAdapter(
-                            child: Container(
-                              height: constraints.maxWidth > 700 ? 300 : 200,
-                              margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                              child: ClipRRect(
+                            child: AspectRatio(
+                              aspectRatio: 21 / 9, // 21:9 超宽比例，完美适配 4K 火影背景，极具电影感
+                              child: Container(
+                                margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                                child: ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
                                 child: Stack(
                                   fit: StackFit.expand,
@@ -288,8 +289,9 @@ class _FeedPageState extends State<FeedPage> {
                               ),
                             ),
                           ),
-                          // 瀑布流内容区
-                          SliverPadding(
+                        ),
+                        // 瀑布流内容区
+                        SliverPadding(
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                             sliver: SliverMasonryGrid.count(
                               crossAxisCount: crossAxisCount,
